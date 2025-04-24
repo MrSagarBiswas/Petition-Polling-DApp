@@ -1,0 +1,135 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  .landing-container {
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+    background: #f9f9f9;
+    color: #333;
+  }
+  
+  .hero {
+    background: linear-gradient(to right, #4a90e2, #007AFF);
+    color: white;
+    padding: 100px 20px;
+    position: relative;
+  }
+  
+  .hero-img {
+    max-width: 500px;
+    width: 80%;
+    margin-top: 30px;
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+  }
+  
+  .fade-in {
+    animation: fadeIn 2s ease forwards;
+  }
+  
+  .fade-in.delay {
+    animation-delay: 0.5s;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .cta-button {
+    padding: 12px 30px;
+    font-size: 1rem;
+    background-color: white;
+    color: #007AFF;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .cta-button:hover {
+    background-color: #e0e0e0;
+    transform: scale(1.05);
+  }
+  
+  .cta-button.large {
+    padding: 16px 40px;
+    font-size: 1.2rem;
+    margin-top: 20px;
+  }
+  
+  .bounce {
+    animation: bounce 2s infinite;
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  .features {
+    display: flex;
+    justify-content: space-around;
+    padding: 60px 20px;
+    flex-wrap: wrap;
+    background: #fff;
+  }
+  
+  .feature {
+    width: 280px;
+    margin: 20px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+  }
+  
+  .hover-zoom:hover {
+    transform: scale(1.05);
+  }
+  
+  .feature-icon {
+    width: 60px;
+    margin-bottom: 15px;
+  }
+  
+  .testimonial-section {
+    padding: 60px 20px;
+    background: #f1f1f1;
+  }
+  
+  .testimonial-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+  }
+  
+  .testimonial-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  
+  .cta-section {
+    background: linear-gradient(to right, #007AFF, #4a90e2);
+    color: white;
+    padding: 60px 20px;
+  }
+  
+  .footer {
+    padding: 20px;
+    background: #e0e0e0;
+    font-size: 0.9rem;
+  }
+  
