@@ -20,9 +20,9 @@ const Footer = () => {
           {/* Quick Links */}
           <div className="col-md-2 col-lg-2 col-xl-2 mx-auto mt-3">
             <h5 className="text-uppercase mb-4 font-weight-bold text-warning">Quick Links</h5>
-            <p><a href="#" className="text-light" style={{ textDecoration: 'none' }}>Home</a></p>
-            <p><a href="#" className="text-light" style={{ textDecoration: 'none' }}>About</a></p>
-            <p><a href="#" className="text-light" style={{ textDecoration: 'none' }}>Contact</a></p>
+            <p><a href="/" className="text-light" style={{ textDecoration: 'none' }}>Home</a></p>
+            <p><a href="about" className="text-light" style={{ textDecoration: 'none' }}>About</a></p>
+            <p><a href="contact" className="text-light" style={{ textDecoration: 'none' }}>Contact</a></p>
           </div>
 
 

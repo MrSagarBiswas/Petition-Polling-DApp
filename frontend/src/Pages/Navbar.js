@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -8,7 +8,7 @@ const Navbar = () => {
     <nav className="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
       <div className="container">
         {/* Logo */}
-        <Link className="navbar-brand d-flex align-items-center" to="/">
+        <NavLink className="navbar-brand d-flex align-items-center" to="/">
           <img
             src="/logo512.png"
             alt="Logo"
@@ -17,7 +17,7 @@ const Navbar = () => {
             className="d-inline-block align-text-top me-2"
           />
           <span className="fw-bold">Decentralized Petition & Polling</span>
-        </Link>
+        </NavLink>
 
         {/* Toggler/collapsible Button */}
         <button
@@ -36,19 +36,35 @@ const Navbar = () => {
         <div className="collapse navbar-collapse" id="navbarSupportedContent">
           <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
             <li className="nav-item">
-              <Link className="nav-link active" aria-current="page" to="/">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  'nav-link' + (isActive ? ' active' : '')
+                }
+              >
                 Home
-              </Link>
+              </NavLink>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/about">
+              <NavLink
+                to="/about"
+                className={({ isActive }) =>
+                  'nav-link' + (isActive ? ' active' : '')
+                }
+              >
                 About
-              </Link>
+              </NavLink>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/contact">
+              <NavLink
+                to="/contact"
+                className={({ isActive }) =>
+                  'nav-link' + (isActive ? ' active' : '')
+                }
+              >
                 Contact
-              </Link>
+              </NavLink>
             </li>
           </ul>
         </div>

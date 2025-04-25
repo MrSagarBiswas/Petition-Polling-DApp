@@ -14,7 +14,7 @@ const LandingPage = () => {
       <header className="hero">
         <h1 className="fade-in">Voice the Change</h1>
         <p className="fade-in delay">Create Petitions. Vote on Polls. Be Heard.</p>
-        <button className="cta-button bounce">Get Started</button>
+        <button onClick={() => navigate('/view-petitions')} className="cta-button bounce">Get Started</button>
         <imgs src="/petition.jpg" alt="Hero" className="hero-img" />
       </header>
 
@@ -89,7 +89,7 @@ const LandingPage = () => {
 
       <section className="cta-section">
         <h2>Ready to make an impact?</h2>
-        <button className="cta-button large">Join Now</button>
+        <button onClick={() => navigate('/create-poll')} className="cta-button large">Join Now</button>
       </section>
 
     </div>
