@@ -1,266 +1,294 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./Verifier.sol";
-import "./VRFConsumerBase.sol";
-
 /// @title PetitionPoll
-/// @notice Allows creation of zero-knowledge Merkle-based petitions and polls,
-/// enforces deadlines, and supports Hedera-Scheduled transactions for automatic finalization.
-contract PetitionPoll is VRFConsumerBase {
-    Verifier public verifier;
-
-    bytes32 internal keyHash;
-    uint256 internal fee;
-
-    // Enumeration arrays
+/// @notice Create and manage public or private petitions and polls with one-time participation.
+contract PetitionPoll {
+    //–– State arrays & counters ––//
     uint256[] public petitionIds;
+    uint256 public  petitionCount;
+
     uint256[] public pollIds;
+    uint256 public  pollCount;
 
-    constructor(address _verifier) VRFConsumerBase(address(0), address(0)) {
-        verifier = Verifier(_verifier);
-        keyHash = 0;
-        fee = 0;
-    }
-
+    //–– Internal storage ––//
     struct Petition {
         uint256 id;
         address creator;
-        string title;
-        string description;
+        string  title;
+        string  description;
         uint256 createdAt;
         uint256 deadline;
-        bytes32 merkleRoot;
-        bool validated;
-        bool closed;
+        bool    isPublic;
+        address[] allowedAddresses;
         uint256 signatureCount;
-        mapping(bytes32 => bool) nullified;
+        bool    closed;
+        mapping(address => bool) allowed;
+        mapping(address => bool) hasSigned;
     }
 
     struct Poll {
         uint256 id;
         address creator;
-        string question;
+        string  question;
         string[] options;
         uint256 createdAt;
-        bytes32 merkleRoot;
         uint256 deadline;
-        bool finalized;
+        bool    isPublic;
+        address[] allowedAddresses;
+        mapping(address => bool) allowed;
+        mapping(address => bool) hasVoted;
         mapping(uint256 => uint256) votes;
-        mapping(bytes32 => bool) nullified;
-        uint256 randomResult;
+        bool    finalized;
+        uint256 winnerIndex;
     }
 
-    uint256 public petitionCount;
-    uint256 public pollCount;
+    mapping(uint256 => Petition) private petitions;
+    mapping(uint256 => Poll)    private polls;
 
-    mapping(uint256 => Petition) public petitions;
-    mapping(uint256 => Poll) public polls;
+    //–– Events ––//
+    event PetitionCreated(
+        uint256 indexed id,
+        address indexed creator,
+        string title,
+        string description,
+        uint256 deadline,
+        bool isPublic
+    );
+    event PetitionSigned(uint256 indexed id, address indexed voter);
+    event PetitionFinalized(uint256 indexed id);
 
-    event PetitionCreated(uint256 indexed id, uint256 deadline);
-    event PetitionValidated(uint256 indexed id);
-    event PetitionSigned(uint256 indexed id);
-    event PetitionClosed(uint256 indexed id, uint256 totalSignatures);
-
-    event PollCreated(uint256 indexed id, uint256 deadline);
-    event VoteCast(uint256 indexed pollId);
+    event PollCreated(
+        uint256 indexed id,
+        address indexed creator,
+        string question,
+        string[] options,
+        uint256 deadline,
+        bool isPublic
+    );
+    event VoteCast(uint256 indexed pollId, address indexed voter, uint256 optionIndex);
     event PollFinalized(uint256 indexed pollId, uint256 winnerIndex);
 
-    /// @notice Create a petition with a given duration (seconds)
+    /// @notice Create a new petition
     function createPetition(
         string calldata title,
         string calldata description,
-        bytes32 merkleRoot,
-        uint256 durationSeconds
+        uint256 durationSeconds,
+        bool    isPublic,
+        address[] calldata allowedAddresses
     ) external {
+        require(bytes(title).length > 0, "Title required");
+        require(durationSeconds > 0, "Duration must be > 0");
+
         petitionCount++;
-        Petition storage p = petitions[petitionCount];
-        p.id = petitionCount;
-        p.creator = msg.sender;
-        p.title = title;
+        uint256 id = petitionCount;
+
+        Petition storage p = petitions[id];
+        p.id          = id;
+        p.creator     = msg.sender;
+        p.title       = title;
         p.description = description;
-        p.createdAt = block.timestamp;
-        p.deadline = block.timestamp + durationSeconds;
-        p.merkleRoot = merkleRoot;
-        p.closed = false;
+        p.createdAt   = block.timestamp;
+        p.deadline    = block.timestamp + durationSeconds;
+        p.isPublic    = isPublic;
 
-        petitionIds.push(petitionCount);
-        emit PetitionCreated(p.id, p.deadline);
+        for (uint256 i = 0; i < allowedAddresses.length; i++) {
+            address addr = allowedAddresses[i];
+            p.allowedAddresses.push(addr);
+            p.allowed[addr] = true;
+        }
+
+        petitionIds.push(id);
+        emit PetitionCreated(id, msg.sender, title, description, p.deadline, isPublic);
     }
 
-    /// @notice Validate a petition's initial proof before signing
-    function validatePetition(
-        uint256 petitionId,
-        uint256[2] calldata a,
-        uint256[2][2] calldata b,
-        uint256[2] calldata c,
-        uint256[] calldata input
-    ) external {
-        Petition storage p = petitions[petitionId];
-        require(msg.sender == p.creator, "Only creator");
-        require(!p.validated, "Already validated");
-        bool ok = verifier.verifyProof(a, b, c, input);
-        require(ok, "Invalid proof");
-        p.validated = true;
-        emit PetitionValidated(petitionId);
-    }
-
-    /// @notice Sign a petition if still within deadline
-    function signPetition(
-        uint256 petitionId,
-        bytes32 nullifierHash,
-        uint256[2] calldata a,
-        uint256[2][2] calldata b,
-        uint256[2] calldata c,
-        uint256[] calldata input
-    ) external {
+    function signPetition(uint256 petitionId) external {
+        require(petitionId > 0 && petitionId <= petitionCount, "Petition does not exist");
         Petition storage p = petitions[petitionId];
         require(!p.closed, "Petition closed");
         require(block.timestamp <= p.deadline, "Deadline passed");
-        require(p.validated, "Not validated");
-        require(!p.nullified[nullifierHash], "Already signed");
-        bool ok = verifier.verifyProof(a, b, c, input);
-        require(ok && input[0] == uint256(p.merkleRoot), "Invalid proof/root");
+        require(!p.hasSigned[msg.sender], "Already signed");
+        if (!p.isPublic) {
+            require(p.allowed[msg.sender], "Not allowed to sign");
+        }
 
-        p.nullified[nullifierHash] = true;
+        p.hasSigned[msg.sender] = true;
         p.signatureCount++;
-        emit PetitionSigned(petitionId);
+        emit PetitionSigned(petitionId, msg.sender);
     }
 
-    /// @notice Close petition when deadline passes; to be called by Hedera Scheduled txn
     function finalizePetition(uint256 petitionId) external {
+        require(petitionId > 0 && petitionId <= petitionCount, "Petition does not exist");
         Petition storage p = petitions[petitionId];
         require(!p.closed, "Already closed");
-        require(block.timestamp > p.deadline, "Still active");
+        require(block.timestamp > p.deadline, "Deadline not yet passed");
+
         p.closed = true;
-        emit PetitionClosed(petitionId, p.signatureCount);
+        emit PetitionFinalized(petitionId);
     }
 
-    /// @notice Create a poll with given duration
-    function createPoll(
-        string calldata question,
-        string[] calldata options,
-        bytes32 merkleRoot,
-        uint256 durationSeconds
-    ) external {
-        require(options.length >= 2, "At least 2 options");
-        pollCount++;
-        Poll storage pl = polls[pollCount];
-        pl.id = pollCount;
-        pl.creator = msg.sender;
-        pl.question = question;
-        pl.createdAt = block.timestamp;
-        pl.merkleRoot = merkleRoot;
-        pl.deadline = block.timestamp + durationSeconds;
-        pl.finalized = false;
-        for (uint i = 0; i < options.length; i++) {
-            pl.options.push(options[i]);
-        }
-
-        pollIds.push(pollCount);
-        emit PollCreated(pl.id, pl.deadline);
+    function getPetition(uint256 petitionId)
+        external
+        view
+        returns (
+            string memory title,
+            string memory description,
+            uint256 createdAt,
+            uint256 deadline,
+            bool    isPublic,
+            uint256 signatureCount,
+            address[] memory allowedAddresses
+        )
+    {
+        require(petitionId > 0 && petitionId <= petitionCount, "Petition does not exist");
+        Petition storage p = petitions[petitionId];
+        return (
+            p.title,
+            p.description,
+            p.createdAt,
+            p.deadline,
+            p.isPublic,
+            p.signatureCount,
+            p.allowedAddresses
+        );
     }
 
-    /// @notice Cast vote if poll still active
-    function vote(
-        uint256 pollId,
-        uint256 optionIndex,
-        bytes32 nullifierHash,
-        uint256[2] calldata a,
-        uint256[2][2] calldata b,
-        uint256[2] calldata c,
-        uint256[] calldata input
-    ) external {
-        Poll storage pl = polls[pollId];
-        require(!pl.finalized, "Poll finalized");
-        require(block.timestamp <= pl.deadline, "Voting closed");
-        require(!pl.nullified[nullifierHash], "Already voted");
-        require(optionIndex < pl.options.length, "Invalid option");
-        bool ok = verifier.verifyProof(a, b, c, input);
-        require(ok && input[0] == uint256(pl.merkleRoot), "Invalid proof/root");
-
-        pl.nullified[nullifierHash] = true;
-        pl.votes[optionIndex]++;
-        emit VoteCast(pollId);
-    }
-
-    /// @notice Finalize poll; to be called by Hedera Scheduled txn or manually after deadline
-    function finalizePoll(uint256 pollId) external {
-        Poll storage pl = polls[pollId];
-        require(!pl.finalized, "Already finalized");
-        require(block.timestamp > pl.deadline, "Still active");
-
-        uint256 maxVotes;
-        uint256 winnerIndex;
-        for (uint i = 0; i < pl.options.length; i++) {
-            if (pl.votes[i] > maxVotes) {
-                maxVotes = pl.votes[i];
-                winnerIndex = i;
-            }
-        }
-
-        pl.finalized = true;
-        pl.randomResult = winnerIndex;
-        emit PollFinalized(pollId, winnerIndex);
-    }
-
-    function fulfillRandomness(bytes32, uint256) internal override {
-        // not used when finalized on-schedule
-    }
-
-    /// @notice Return all created petition IDs
-    function getPetitions() external view returns (uint256[] memory) {
+    function getAllPetitionIds() external view returns (uint256[] memory) {
         return petitionIds;
     }
 
-    /// @notice Return all created poll IDs
-    function getPolls() external view returns (uint256[] memory) {
+    /// @notice Create a new poll
+    function createPoll(
+        string calldata question,
+        string[] calldata options,
+        uint256 durationSeconds,
+        bool    isPublic,
+        address[] calldata allowedAddresses
+    ) external {
+        require(options.length >= 2, "At least 2 options");
+        require(durationSeconds > 0, "Duration must be > 0");
+
+        pollCount++;
+        uint256 id = pollCount;
+
+        Poll storage pl = polls[id];
+        pl.id          = id;
+        pl.creator     = msg.sender;
+        pl.question    = question;
+        pl.createdAt   = block.timestamp;
+        pl.deadline    = block.timestamp + durationSeconds;
+        pl.isPublic    = isPublic;
+
+        // store options
+        for (uint256 i = 0; i < options.length; i++) {
+            pl.options.push(options[i]);
+        }
+
+        // store allowed addresses
+        for (uint256 i = 0; i < allowedAddresses.length; i++) {
+            address addr = allowedAddresses[i];
+            pl.allowedAddresses.push(addr);
+            pl.allowed[addr] = true;
+        }
+
+        pollIds.push(id);
+        emit PollCreated(id, msg.sender, question, pl.options, pl.deadline, isPublic);
+    }
+
+    function vote(uint256 pollId, uint256 optionIndex) external {
+        require(pollId > 0 && pollId <= pollCount, "Poll does not exist");
+        Poll storage pl = polls[pollId];
+        require(!pl.finalized, "Poll finalized");
+        require(block.timestamp <= pl.deadline, "Voting closed");
+        require(optionIndex < pl.options.length, "Invalid option");
+        require(!pl.hasVoted[msg.sender], "Already voted");
+        if (!pl.isPublic) {
+            require(pl.allowed[msg.sender], "Not allowed to vote");
+        }
+
+        pl.hasVoted[msg.sender] = true;
+        pl.votes[optionIndex]++;
+        emit VoteCast(pollId, msg.sender, optionIndex);
+    }
+
+    function finalizePoll(uint256 pollId) external {
+        require(pollId > 0 && pollId <= pollCount, "Poll does not exist");
+        Poll storage pl = polls[pollId];
+        require(!pl.finalized, "Already finalized");
+        require(block.timestamp > pl.deadline, "Voting not yet closed");
+
+        uint256 winningIndex;
+        uint256 highest;
+        for (uint256 i = 0; i < pl.options.length; i++) {
+            if (pl.votes[i] > highest) {
+                highest = pl.votes[i];
+                winningIndex = i;
+            }
+        }
+        pl.finalized   = true;
+        pl.winnerIndex = winningIndex;
+        emit PollFinalized(pollId, winningIndex);
+    }
+
+    function getPoll(uint256 pollId)
+        external
+        view
+        returns (
+            string memory question,
+            string[] memory options,
+            uint256 createdAt,
+            uint256 deadline,
+            bool    isPublic,
+            uint256[] memory voteCounts,
+            address[] memory allowedAddresses
+        )
+    {
+        require(pollId > 0 && pollId <= pollCount, "Poll does not exist");
+        Poll storage pl = polls[pollId];
+
+        uint256 len = pl.options.length;
+        uint256[] memory counts = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            counts[i] = pl.votes[i];
+        }
+
+        return (
+            pl.question,
+            pl.options,
+            pl.createdAt,
+            pl.deadline,
+            pl.isPublic,
+            counts,
+            pl.allowedAddresses
+        );
+    }
+
+    function getAllPollIds() external view returns (uint256[] memory) {
         return pollIds;
     }
 
-    /// @notice Return basic info for a given petition
-    function getPetitionInfo(uint256 petitionId) external view returns (
-        string memory title,
-        string memory description,
-        uint256 createdAt,
-        uint256 deadline,
-        uint256 signatureCount,
-        bool closed
-    ) {
-        Petition storage p = petitions[petitionId];
-        return (p.title, p.description, p.createdAt, p.deadline, p.signatureCount, p.closed);
+    /// @notice Check whether `user` has already voted in poll `pollId`.
+    function hasVotedInPoll(uint256 pollId, address user)
+        external
+        view
+        returns (bool)
+    {
+        require(pollId > 0 && pollId <= pollCount, "Poll does not exist");
+        return polls[pollId].hasVoted[user];
     }
 
-    /// @notice Return basic info for a given poll
-    function getPollInfo(uint256 pollId) external view returns (
-        string memory question,
-        string[] memory options,
-        uint256 createdAt,
-        bool active
-    ) {
-        Poll storage p = polls[pollId];
-        bool activeFlag = block.timestamp <= p.deadline;
-        return (p.question, p.options, p.createdAt, activeFlag);
-    }
-
-    /// @notice Return poll results & status
-    function getPollResults(uint256 pollId) external view returns (
-        string[] memory options,
-        uint256[] memory counts,
-        bool finalized,
-        uint256 winnerIndex
-    ) {
+    /// @notice Check whether `user` is eligible to vote in poll `pollId`.
+    function isEligibleToVote(uint256 pollId, address user)
+        external
+        view
+        returns (bool)
+    {
+        require(pollId > 0 && pollId <= pollCount, "Poll does not exist");
         Poll storage pl = polls[pollId];
-        uint256 len = pl.options.length;
-        uint256[] memory countsArr = new uint256[](len);
-        for (uint i = 0; i < len; i++) {
-            countsArr[i] = pl.votes[i];
+        if (pl.isPublic) {
+            return true;
+        } else {
+            return pl.allowed[user];
         }
-        return (pl.options, countsArr, pl.finalized, pl.randomResult);
     }
 }
-
-/*
-Client-side, use Hedera ScheduleCreateTransaction to schedule calls to finalizePetition
-and finalizePoll at their deadlines. See Hedera SDK docs for example.
-*/

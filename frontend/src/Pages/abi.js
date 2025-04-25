@@ -1,16 +1,5 @@
 export const abi = [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_verifier",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -20,29 +9,34 @@ export const abi = [
         "type": "uint256"
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "totalSignatures",
-        "type": "uint256"
-      }
-    ],
-    "name": "PetitionClosed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
       },
       {
         "indexed": false,
         "internalType": "uint256",
         "name": "deadline",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isPublic",
+        "type": "bool"
       }
     ],
     "name": "PetitionCreated",
@@ -58,20 +52,7 @@ export const abi = [
         "type": "uint256"
       }
     ],
-    "name": "PetitionSigned",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "name": "PetitionValidated",
+    "name": "PetitionFinalized",
     "type": "event"
   },
   {
@@ -84,10 +65,53 @@ export const abi = [
         "type": "uint256"
       },
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      }
+    ],
+    "name": "PetitionSigned",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string[]",
+        "name": "options",
+        "type": "string[]"
+      },
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "deadline",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isPublic",
+        "type": "bool"
       }
     ],
     "name": "PollCreated",
@@ -120,6 +144,18 @@ export const abi = [
         "internalType": "uint256",
         "name": "pollId",
         "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "optionIndex",
+        "type": "uint256"
       }
     ],
     "name": "VoteCast",
@@ -138,14 +174,19 @@ export const abi = [
         "type": "string"
       },
       {
-        "internalType": "bytes32",
-        "name": "merkleRoot",
-        "type": "bytes32"
-      },
-      {
         "internalType": "uint256",
         "name": "durationSeconds",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isPublic",
+        "type": "bool"
+      },
+      {
+        "internalType": "address[]",
+        "name": "allowedAddresses",
+        "type": "address[]"
       }
     ],
     "name": "createPetition",
@@ -166,14 +207,19 @@ export const abi = [
         "type": "string[]"
       },
       {
-        "internalType": "bytes32",
-        "name": "merkleRoot",
-        "type": "bytes32"
-      },
-      {
         "internalType": "uint256",
         "name": "durationSeconds",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isPublic",
+        "type": "bool"
+      },
+      {
+        "internalType": "address[]",
+        "name": "allowedAddresses",
+        "type": "address[]"
       }
     ],
     "name": "createPoll",
@@ -208,6 +254,32 @@ export const abi = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAllPetitionIds",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllPollIds",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -215,7 +287,7 @@ export const abi = [
         "type": "uint256"
       }
     ],
-    "name": "getPetitionInfo",
+    "name": "getPetition",
     "outputs": [
       {
         "internalType": "string",
@@ -238,27 +310,19 @@ export const abi = [
         "type": "uint256"
       },
       {
+        "internalType": "bool",
+        "name": "isPublic",
+        "type": "bool"
+      },
+      {
         "internalType": "uint256",
         "name": "signatureCount",
         "type": "uint256"
       },
       {
-        "internalType": "bool",
-        "name": "closed",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPetitions",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
+        "internalType": "address[]",
+        "name": "allowedAddresses",
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -272,7 +336,7 @@ export const abi = [
         "type": "uint256"
       }
     ],
-    "name": "getPollInfo",
+    "name": "getPoll",
     "outputs": [
       {
         "internalType": "string",
@@ -290,8 +354,47 @@ export const abi = [
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      },
+      {
         "internalType": "bool",
-        "name": "active",
+        "name": "isPublic",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "voteCounts",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "allowedAddresses",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "pollId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "hasVotedInPoll",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
         "type": "bool"
       }
     ],
@@ -304,42 +407,19 @@ export const abi = [
         "internalType": "uint256",
         "name": "pollId",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       }
     ],
-    "name": "getPollResults",
+    "name": "isEligibleToVote",
     "outputs": [
-      {
-        "internalType": "string[]",
-        "name": "options",
-        "type": "string[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "counts",
-        "type": "uint256[]"
-      },
       {
         "internalType": "bool",
-        "name": "finalized",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "winnerIndex",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPolls",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
         "name": "",
-        "type": "uint256[]"
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -371,70 +451,6 @@ export const abi = [
       {
         "internalType": "uint256",
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "petitions",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "title",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "description",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "deadline",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "merkleRoot",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bool",
-        "name": "validated",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "closed",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "signatureCount",
         "type": "uint256"
       }
     ],
@@ -477,156 +493,13 @@ export const abi = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "polls",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "question",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "merkleRoot",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "deadline",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "finalized",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "randomResult",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "requestId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "randomness",
-        "type": "uint256"
-      }
-    ],
-    "name": "rawFulfillRandomness",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "petitionId",
         "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "nullifierHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "a",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[2][2]",
-        "name": "b",
-        "type": "uint256[2][2]"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "c",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "input",
-        "type": "uint256[]"
       }
     ],
     "name": "signPetition",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "petitionId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "a",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[2][2]",
-        "name": "b",
-        "type": "uint256[2][2]"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "c",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "input",
-        "type": "uint256[]"
-      }
-    ],
-    "name": "validatePetition",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "verifier",
-    "outputs": [
-      {
-        "internalType": "contract Verifier",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -640,31 +513,6 @@ export const abi = [
         "internalType": "uint256",
         "name": "optionIndex",
         "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "nullifierHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "a",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[2][2]",
-        "name": "b",
-        "type": "uint256[2][2]"
-      },
-      {
-        "internalType": "uint256[2]",
-        "name": "c",
-        "type": "uint256[2]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "input",
-        "type": "uint256[]"
       }
     ],
     "name": "vote",

@@ -70,7 +70,7 @@ const LandingPage = () => {
       onKeyDown={e => (e.key === 'Enter' ? navigate('/view-polls') : null)}
     >
           <img src="earth.png" alt="Vote" className="feature-icon" />
-          <h3>View Elections</h3>
+          <h3>View Polls</h3>
           <p>Share your opinion</p>
         </div>
       </section>

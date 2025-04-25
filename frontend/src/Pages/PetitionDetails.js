@@ -10,11 +10,15 @@ const PetitionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [petition, setPetition] = useState(null);
-  const [signed, setSigned]     = useState(false);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
-  const [txHash, setTxHash]     = useState('');
+  const [petition, setPetition]       = useState(null);
+  const [signed, setSigned]           = useState(false);
+  const [eligible, setEligible]       = useState(false);
+  const [userAddr, setUserAddr]       = useState('');
+  const [hasWallet, setHasWallet]     = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [txHash, setTxHash]           = useState('');
 
   const CONTRACT = process.env.REACT_APP_CONTRACT_ADDRESS;
   const RPC_URL  = process.env.REACT_APP_RPC_PROVIDER;
@@ -25,40 +29,48 @@ const PetitionDetail = () => {
         const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
         const contract = new ethers.Contract(CONTRACT, petitionAbi, provider);
 
-        // 1) fetch on-chain data
-        const [ title, description, createdAtBN, deadlineBN, signatureCountBN, closed ] =
-          await contract.getPetitionInfo(id);
+        // fetch petition data
+        const [
+          title,
+          description,
+          createdAtBN,
+          deadlineBN,
+          isPublic,
+          signatureCountBN,
+          allowedAddrs
+        ] = await contract.callStatic.getPetition(Number(id));
 
-        // convert timestamps
         const createdAtMs = createdAtBN.toNumber() * 1000;
         const deadlineMs  = deadlineBN.toNumber()  * 1000;
+        const allowedList = allowedAddrs.map(a => a.toLowerCase());
 
         setPetition({
           title,
           description,
-          createdAt: new Date(createdAtMs).toLocaleString(),
-          deadline:  new Date(deadlineMs).toLocaleString(),
-          deadlineRaw: deadlineBN.toNumber(),
+          createdAt:      new Date(createdAtMs).toLocaleString(),
+          deadline:       new Date(deadlineMs).toLocaleString(),
+          deadlineRaw:    deadlineBN.toNumber(),
+          isPublic,
           signatureCount: signatureCountBN.toNumber(),
-          closed
+          allowedList
         });
 
-        // 2) simulate signing for “already signed”
-        const dummyNullifier = ethers.utils.hexZeroPad('0x0', 32);
-        const proofA = [0,0];
-        const proofB = [[0,0],[0,0]];
-        const proofC = [0,0];
-        const inputs = [0];
+        // wallet detection
+        const ethereum = window.ethereum;
+        setHasWallet(!!ethereum);
+        if (ethereum) {
+          const accounts = await ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length) {
+            const addr = accounts[0].toLowerCase();
+            setUserAddr(addr);
+            setWalletConnected(true);
+            setEligible(isPublic || allowedList.includes(addr));
+          }
+        }
 
+        // check already signed
         try {
-          await contract.callStatic.signPetition(
-            id,
-            dummyNullifier,
-            proofA,
-            proofB,
-            proofC,
-            inputs
-          );
+          await contract.callStatic.signPetition(Number(id));
           setSigned(false);
         } catch (simErr) {
           if (simErr.message.includes('Already signed')) {
@@ -75,6 +87,22 @@ const PetitionDetail = () => {
     load();
   }, [id, CONTRACT, RPC_URL]);
 
+  const handleConnect = async () => {
+    try {
+      const ethereum = window.ethereum;
+      if (!ethereum) return;
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length && petition) {
+        const addr = accounts[0].toLowerCase();
+        setUserAddr(addr);
+        setWalletConnected(true);
+        setEligible(petition.isPublic || petition.allowedList.includes(addr));
+      }
+    } catch (err) {
+      console.error('Connect failed', err);
+    }
+  };
+
   const handleSign = async () => {
     setError(null);
     setTxHash('');
@@ -85,39 +113,27 @@ const PetitionDetail = () => {
       const signer   = provider.getSigner();
       const contract = new ethers.Contract(CONTRACT, petitionAbi, signer);
 
-      // zero-proof + nullifier
-      const nullifier = ethers.utils.hexZeroPad('0x0', 32);
-      const proofA = [0,0];
-      const proofB = [[0,0],[0,0]];
-      const proofC = [0,0];
-      const inputs = [0];
-
-      const tx = await contract.signPetition(
-        id,
-        nullifier,
-        proofA,
-        proofB,
-        proofC,
-        inputs
-      );
+      const tx = await contract.signPetition(Number(id));
       setTxHash(tx.hash);
 
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         setSigned(true);
-        // refresh count and closed flag
-        const updated = await contract.getPetitionInfo(id);
-        setPetition(prev => ({
-          ...prev,
-          signatureCount: updated[4].toNumber(),
-          closed:         updated[5]
-        }));
+        const [, , , , , updatedSigCountBN] = await contract.callStatic.getPetition(Number(id));
+        setPetition(prev => ({ ...prev, signatureCount: updatedSigCountBN.toNumber() }));
       }
     } catch (err) {
-      setError(err.message.includes('Deadline passed')
-        ? 'Cannot sign: deadline has passed.'
-        : 'Sign failed: ' + err.message
-      );
+      let msg = err.message || '';
+      if (msg.includes('Deadline passed')) {
+        setError('Cannot sign: deadline has passed.');
+      } else if (msg.includes('Already signed')) {
+        setError('Already signed.');
+        setSigned(true);
+      } else if (msg.includes('Not allowed')) {
+        setError('You are not allowed to sign this petition.');
+      } else {
+        setError('Sign failed: ' + msg);
+      }
     }
   };
 
@@ -128,10 +144,8 @@ const PetitionDetail = () => {
     </div>
   );
 
-  // derive open/expired state
   const nowSec = Math.floor(Date.now() / 1000);
-  const isExpired = nowSec > petition.deadlineRaw;
-  const isOpen    = !petition.closed && !isExpired;
+  const expired = nowSec > petition.deadlineRaw;
 
   return (
     <>
@@ -140,20 +154,40 @@ const PetitionDetail = () => {
         <h2 className="mb-3">Petition #{id}</h2>
         <h4>{petition.title}</h4>
         <p>{petition.description}</p>
+
         <p>
-          <strong>Created:</strong> {petition.createdAt}<br/>
+          <strong>Visibility:</strong>{' '}
+          {petition.isPublic
+            ? <span className="badge bg-info text-dark">Public</span>
+            : <span className="badge bg-secondary">Private</span>}
+        </p>
+
+        <p>
+          <strong>Created:</strong> {petition.createdAt}<br />
           <strong>Closes:</strong> {petition.deadline}
         </p>
+
         <p>
           <strong>Status:</strong>{' '}
-          {petition.closed || isExpired
+          {expired
             ? <span className="badge bg-danger">Closed</span>
-            : <span className="badge bg-success">Open</span>
-          }
+            : <span className="badge bg-success">Open</span>}
         </p>
+
         <p><strong>Signatures:</strong> {petition.signatureCount}</p>
 
-        {isOpen && (
+        <p>
+          <strong>Eligibility:</strong>{' '}
+          {!hasWallet
+            ? <span className="text-warning">Install MetaMask to check eligibility</span>
+            : !walletConnected
+              ? <button className="btn btn-outline-primary btn-sm" onClick={handleConnect}>Connect Wallet</button>
+              : eligible
+                ? <span className="text-success">You can sign this petition</span>
+                : <span className="text-danger">Not eligible to sign</span>}
+        </p>
+
+        {!expired && walletConnected && eligible && (
           <button
             className="btn btn-primary"
             onClick={handleSign}
@@ -163,7 +197,17 @@ const PetitionDetail = () => {
           </button>
         )}
 
-        {!isOpen && !petition.closed && isExpired && (
+        {!expired && (
+          !hasWallet ? null
+          : !walletConnected ? null
+          : !eligible && (
+            <div className="alert alert-warning mt-3">
+              You are not eligible to sign this petition.
+            </div>
+          )
+        )}
+
+        {expired && (
           <div className="alert alert-warning mt-3">
             Deadline has passed; petition is now closed.
           </div>

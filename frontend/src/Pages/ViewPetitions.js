@@ -1,4 +1,3 @@
-// src/ViewPetitions.js
 import React, { useEffect, useState } from 'react';
 import { ethers }     from 'ethers';
 import { abi as petitionAbi } from './abi';
@@ -21,7 +20,7 @@ const ViewPetitions = () => {
       try {
         const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
-        // sanity‑check
+        // sanity-check for contract
         const code = await provider.getCode(contractAddress);
         if (code === '0x') {
           throw new Error('No contract at that address—check RPC path & address');
@@ -29,34 +28,37 @@ const ViewPetitions = () => {
 
         const contract = new ethers.Contract(contractAddress, petitionAbi, provider);
 
-        // fetch all IDs
-        const ids = await contract.callStatic.getPetitions();
+        // fetch all petition IDs
+        const ids = await contract.callStatic.getAllPetitionIds();
         setTotal(ids.length);
 
-        // fetch info for each ID, now including raw deadline
+        // fetch details for each petition
         const items = await Promise.all(
           ids.map(async idBN => {
             const id = idBN.toNumber();
             const [
               title,
-              ,                // skip description
+              description,
               createdAtBN,
               deadlineBN,
+              isPublic,
               signatureCountBN,
-              closedFlag
-            ] = await contract.callStatic.getPetitionInfo(id);
+              allowedAddresses
+            ] = await contract.callStatic.getPetition(id);
 
             const createdAtMs = createdAtBN.toNumber() * 1000;
-            const deadlineMs  = deadlineBN.toNumber()  * 1000;
+            const deadlineMs  = deadlineBN.toNumber() * 1000;
 
             return {
               id,
               title,
+              description,
+              isPublic,
               createdAtFormatted: new Date(createdAtMs).toLocaleString(),
               deadlineFormatted:  new Date(deadlineMs).toLocaleString(),
               deadlineRaw:        deadlineBN.toNumber(),
               signatureCount:     signatureCountBN.toNumber(),
-              closed:             closedFlag
+              allowedAddresses
             };
           })
         );
@@ -89,6 +91,7 @@ const ViewPetitions = () => {
               <tr>
                 <th>ID</th>
                 <th>Title</th>
+                <th>Visibility</th>
                 <th>Created At</th>
                 <th>Ends At</th>
                 <th>Signatures</th>
@@ -99,7 +102,6 @@ const ViewPetitions = () => {
               {petitions.map(p => {
                 const nowSec = Math.floor(Date.now() / 1000);
                 const expired = nowSec > p.deadlineRaw;
-                const isClosed = p.closed || expired;
 
                 return (
                   <tr
@@ -109,11 +111,16 @@ const ViewPetitions = () => {
                   >
                     <td>{p.id}</td>
                     <td>{p.title}</td>
+                    <td>
+                      {p.isPublic
+                        ? <span className="badge bg-info text-dark">Public</span>
+                        : <span className="badge bg-secondary">Private</span>}
+                    </td>
                     <td>{p.createdAtFormatted}</td>
                     <td>{p.deadlineFormatted}</td>
                     <td>{p.signatureCount}</td>
                     <td>
-                      {isClosed
+                      {expired
                         ? <span className="badge bg-danger">Closed</span>
                         : <span className="badge bg-success">Open</span>}
                     </td>

@@ -6,10 +6,12 @@ import LandingPage from './Pages/LandingPage';
 // import AboutPage from './Pages/About';
 // import ContactPage from './Pages/Contact';
 import CreatePetition from './Pages/CreatePetition';
-import CreatePoll from './Pages/CreatePoll';
 import ViewPetitions from './Pages/ViewPetitions';
-import ViewPolls from './Pages/ViewPolls';
 import PetitionDetails from './Pages/PetitionDetails';
+
+import CreatePoll from './Pages/CreatePoll';
+import ViewPolls from './Pages/ViewPolls';
+import PollDetails from './Pages/PollDetails';
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
       <Route path="/view-petitions" element={<ViewPetitions />} />
       <Route path="/view-petitions/:id" element={<PetitionDetails />} />
       <Route path="/view-polls" element={<ViewPolls />} />
+      <Route path="/view-polls/:id" element={<PollDetails />} />
     </Routes>
   );
 }
