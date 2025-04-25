@@ -1,4 +1,3 @@
-```markdown
 # Blockchain Petition & Poll DApp
 
 A decentralized application for creating and voting on polls (petitions) on-chain. Built with:
@@ -24,7 +23,7 @@ A decentralized application for creating and voting on polls (petitions) on-chai
 
 - [Node.js & npm](https://nodejs.org/) v14+  
 - [MetaMask](https://metamask.io/) (or another EVM-compatible wallet)  
-- A testnet account with some test ETH (e.g. on Hashio’s testnet)  
+- A testnet account with some test HBAR (e.g. on Hedera’s testnet)  
 
 ---
 
@@ -74,9 +73,9 @@ REACT_APP_RPC_PROVIDER=https://testnet.hashio.io/api
    - Runs `deploy.js` and prints the deployed contract address  
 
 4. **Copy ABI to Frontend**  
-   ```bash
-   cp artifacts/contracts/PetitionPoll.sol/PetitionPoll.json frontend/src/pages/abi.js
-   ```
+   - go to artifacts/contracts/PetitionPoll.sol/PetitionPoll.json
+   - copy abi part only. []
+   - go to frontend/src/pages/abi.js and replace the abi
 
 ---
 
@@ -125,5 +124,4 @@ If two or more options share the top vote count:
 
 ## License
 
-MIT
-```
+[MIT](https://opensource.org/license/mit)

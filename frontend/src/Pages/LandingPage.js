@@ -27,7 +27,7 @@ const LandingPage = () => {
       style={{ cursor: 'pointer' }}
       onKeyDown={e => (e.key === 'Enter' ? navigate('/create-petition') : null)}
     >
-          <img src="/petition1.png" alt="Petition" className="feature-icon" />
+          <img src="createPetition.jpg" alt="Petition" className="feature-icon" />
           <h3>Create Petition</h3>
           <p>Start impactful campaigns</p>
         </div>
@@ -40,12 +40,10 @@ const LandingPage = () => {
       style={{ cursor: 'pointer' }}
       onKeyDown={e => (e.key === 'Enter' ? navigate('/create-poll') : null)}
     >
-          <img src="/poll1.png" alt="Poll" className="feature-icon" />
+          <img src="createPoll.jpg" alt="Poll" className="feature-icon" />
           <h3>Create Poll</h3>
           <p>Let the democracy decide</p>
         </div>
-
-
 
         <div
       className="feature hover-zoom"
@@ -55,7 +53,7 @@ const LandingPage = () => {
       style={{ cursor: 'pointer' }}
       onKeyDown={e => (e.key === 'Enter' ? navigate('/view-petitions') : null)}
     >
-          <img src="/poll.png" alt="Sign" className="feature-icon" />
+          <img src="petitions.jpg" alt="Sign" className="feature-icon" />
           <h3>View Petitions</h3>
           <p>Sign for a good cause</p>
         </div>
@@ -69,7 +67,7 @@ const LandingPage = () => {
       style={{ cursor: 'pointer' }}
       onKeyDown={e => (e.key === 'Enter' ? navigate('/view-polls') : null)}
     >
-          <img src="earth.png" alt="Vote" className="feature-icon" />
+          <img src="vote.jpg" alt="Vote" className="feature-icon" />
           <h3>View Polls</h3>
           <p>Share your opinion</p>
         </div>
